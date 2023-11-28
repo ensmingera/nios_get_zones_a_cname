@@ -45,9 +45,9 @@ parser.add_argument(
     help="WAPI version to use (Default: 2.12.2)"
 )
 parser.add_argument(
-    "-m", type=int, default=100, metavar="MAX-RESULTS", dest="max_results",
+    "-m", type=int, default=1000, metavar="MAX-RESULTS", dest="max_results",
     action=MaxResultsAction,
-    help="Number of results per request (Default: 100)"
+    help="Number of results per request (Default: 1000)"
 )
 parser.add_argument(
     "-u", "--user", type=str, default="admin",
