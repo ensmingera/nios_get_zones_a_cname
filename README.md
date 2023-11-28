@@ -6,7 +6,7 @@ This program connects to an Infoblox NIOS Grid and retrieves all zones, from all
 
 ## Usage
 ```
-nios_get_zones_a_cname.py [-h] [-k] [-t] [-w VERSION] [-m MAX-RESULTS] [-u USER] [-o FILE] HOST
+nios_get_zones_a_cname.py [-h] [-k] [-w VERSION] [-m MAX-RESULTS] [-u USER] [-o FILE] HOST
 ```
 **Arguments**:
 - Positional arguments
@@ -18,8 +18,6 @@ nios_get_zones_a_cname.py [-h] [-k] [-t] [-w VERSION] [-m MAX-RESULTS] [-u USER]
     -  Display the help messsage
   - **-k** 
     - Disable SSL verification
-  - **-t** 
-    - Truncate if results is greater than MAX-RESULTS (Default: False)
   - **-w VERSION**
     - WAPI version to use *(Default: 2.12.2)* 
   - **-m MAX-RESULTS**
@@ -35,8 +33,8 @@ nios_get_zones_a_cname.py -k -w 2.12 -u aensminger -o example.csv mygrid.lab
 Enter the password for user 'aensminger':
 Using WAPI version: 2.12
 Attempting to log in to mygrib.lab ... OK
-Gathering all authoritative zones . OK
-Gathering A and CNAME records for 6 zones ...
+Gathering all authoritative zones ... OK
+Gathering A and CNAME records for 6 zones
 [1/6]  Zone: (10.33.122.0/24)
         - Requesting A records .......  OK
         - Requesting CNAME records ...  OK
