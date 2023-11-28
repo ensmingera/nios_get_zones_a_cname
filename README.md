@@ -23,7 +23,7 @@ nios_get_zones_a_cname.py [-h] [-k] [-t] [-w VERSION] [-m MAX-RESULTS] [-u USER]
   - **-w VERSION**
     - WAPI version to use *(Default: 2.12.2)* 
   - **-m MAX-RESULTS**
-    - Number of results per request *(Default: 100)*
+    - Number of results per request *(Default: 1000)*
   - **-u USER, --user USER**
     - The username for authentication *(Default: admin)*
   - **-o FILE**
