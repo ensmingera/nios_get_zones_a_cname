@@ -167,7 +167,7 @@ zkeys.sort(key=str.lower)
 zones = {i: uzones[i] for i in zkeys}
 
 # Loop through zones, and request records
-print(f"Gathering A and CNAME records for {len(zones)} zones ...")
+print(f"Gathering A and CNAME records for {len(zones)} zones")
 # Get max spacing for output
 max_spacing = (len(f"{len(zones)}") * 2) + 3
 for i, zone in enumerate(zones, start=1):
