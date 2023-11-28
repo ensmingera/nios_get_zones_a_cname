@@ -9,9 +9,10 @@ import os
 
 class MaxResultsAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
-        if not 0 < values < 5001:
+        if values < 1:
             raise argparse.ArgumentError(
-                self, "number of results must be between 1 and 5000"
+                self,
+                "number of results must be positive (did you mean -t?)"
             )
         setattr(namespace, self.dest, values)
 
@@ -34,6 +35,10 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     "-k", action="store_true", dest="ssl_no_verify",
     help="Disable SSL verification"
+)
+parser.add_argument(
+    "-t", action="store_true", default=False, dest="truncate_results",
+    help="Truncate if results is greater than MAX-RESULTS (Default: False)"
 )
 parser.add_argument(
     "-w", type=str, default="2.12.2", dest="wapi_ver", metavar="VERSION",
@@ -64,6 +69,8 @@ if args.ssl_no_verify == True:
     SECURITY_SSL_VERIFY = False
 else:
     SECURITY_SSL_VERIFY = True
+
+TRUNC_RESULT = "-" if not args.truncate_results else ""
 
 GM_HOST = args.host
 GM_USER = args.user
@@ -171,6 +178,7 @@ for i, zone in enumerate(zones, start=1):
           end="\t", flush=True)
     req_params = (
         f"?zone={zone}&view={zones[zone]['view']}"
+        f"&_max_results={TRUNC_RESULT}{MAX_RESULTS}"
         "&type=record:a&_return_fields=type,name,address"
     )
     data = requests.get(
@@ -199,6 +207,7 @@ for i, zone in enumerate(zones, start=1):
     #CNAME needs record, then use results[record]['record']['canonical']
     req_params = (
         f"?zone={zone}&view={zones[zone]['view']}"
+        f"&_max_results={TRUNC_RESULT}{MAX_RESULTS}"
         "&type=record:cname&_return_fields=type,name,record"
     )
     data = requests.get(
@@ -242,7 +251,7 @@ with open(output_file, "w", encoding="utf-8") as f:
     for zone in zones:
         for record in zones[zone]['records']:
             line = f"{zone},{record['type']},{record['name']},"
-            if record.get('canonical'):
+            if "canonical" in record:
                 line = line + record['canonical']
             else:
                 line = line + record['address']
