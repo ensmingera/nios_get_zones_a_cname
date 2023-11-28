@@ -11,10 +11,10 @@ class MaxResultsAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         if values < 1:
             raise argparse.ArgumentError(
-                self,
-                "number of results must be positive (did you mean -t?)"
+                self, "number of results must be a positive integer"
             )
         setattr(namespace, self.dest, values)
+
 
 parser = argparse.ArgumentParser(
     formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -35,10 +35,6 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     "-k", action="store_true", dest="ssl_no_verify",
     help="Disable SSL verification"
-)
-parser.add_argument(
-    "-t", action="store_true", default=False, dest="truncate_results",
-    help="Truncate if results is greater than MAX-RESULTS (Default: False)"
 )
 parser.add_argument(
     "-w", type=str, default="2.12.2", dest="wapi_ver", metavar="VERSION",
@@ -62,6 +58,8 @@ parser.add_argument(
     help="CSV output filename (Default: zones.csv)"
 )
 
+ind_chars = "|/-\\"
+
 args = parser.parse_args()
 
 if args.ssl_no_verify == True:
@@ -69,8 +67,6 @@ if args.ssl_no_verify == True:
     SECURITY_SSL_VERIFY = False
 else:
     SECURITY_SSL_VERIFY = True
-
-TRUNC_RESULT = "-" if not args.truncate_results else ""
 
 GM_HOST = args.host
 GM_USER = args.user
@@ -110,31 +106,36 @@ else:
     sys.exit(1)
 
 # Request zone_auth
-print("Gathering all authoritative zones ", end="", flush=True)
+i_ind = 0 # Progress indicator index
+status_text = "Gathering all authoritative zones ..."
+print(f"\r{status_text} ", end="", flush=True)
 req_params = ("?_paging=1"
               f"&_max_results={MAX_RESULTS}"
               "&_return_as_object=1"
               "&_return_fields=network_view,view,dns_fqdn,parent")
 rdata = requests.get(base_url + "zone_auth" + req_params,
-                    verify=SECURITY_SSL_VERIFY,
-                    cookies=session.cookies)
+                     verify=SECURITY_SSL_VERIFY,
+                     cookies=session.cookies,
+                     timeout=(30,60))
 data = json.loads(rdata.text)
 results = data['result']
 
-print(".", end="", flush=True)
-
 while "next_page_id" in data:
+    # Start a progress indicator
+    print(f"\r{status_text} " + ind_chars[i_ind % len(ind_chars)],
+            end="", flush=True)
+    i_ind = (i_ind + 1) % len(ind_chars)
     next_page_id = data['next_page_id']
     req_params = "?_page_id=" + next_page_id
     rdata = requests.get(base_url + "zone_auth" + req_params,
                         verify=SECURITY_SSL_VERIFY,
-                        cookies=session.cookies)
+                        cookies=session.cookies,
+                        timeout=(30,60))
     data = json.loads(rdata.text)
     results = results + data['result']
-    print(".", end="", flush=True)
 
 # We've received all data now, as there is no next_page_id
-print(" OK")
+print(f"\r{status_text}\tOK")
 
 uzones = {}
 for entry in results:
@@ -174,51 +175,81 @@ for i, zone in enumerate(zones, start=1):
     spacing = (max_spacing % len(position)) + 1
     print(f"{position}{' ' * spacing}Zone: ({zone})")
     # First request A records
-    print(f"{' ' * (len(position) + spacing)}- Requesting A records .......",
-          end="\t", flush=True)
+    status_text = (
+        f"{' ' * (len(position) + spacing)}- Requesting A records ......."
+    )
+    print(f"\r{status_text}\t", end="", flush=True)
     req_params = (
         f"?zone={zone}&view={zones[zone]['view']}"
-        f"&_max_results={TRUNC_RESULT}{MAX_RESULTS}"
+        f"&_paging=1&_return_as_object=1&_max_results={MAX_RESULTS}"
         "&type=record:a&_return_fields=type,name,address"
     )
-    data = requests.get(
+    rdata = requests.get(
         base_url + "allrecords" + req_params,
         verify=SECURITY_SSL_VERIFY,
         cookies=session.cookies,
         timeout=(30,60)
     )
-    results = json.loads(data.text)
-    if "Error" not in results:
-        print("OK")
-        # Append them to the zone records
+    data = json.loads(rdata.text)
+    if "Error" not in data:
+        results = data['result']
+        # Append records from first page
         for record in range(len(results)):
-            zones[zone]['records'].append(
-                {
+            zones[zone]['records'].append({
                     'type':results[record]['type'],
                     'name':results[record]['name'],
                     'address':results[record]['address']
-                }
-            )
+                })
+        # If there was more records to get, then we'll have a next_page_id
+        i_ind = 0 # Reset progress indicator index
+        while "next_page_id" in data:
+            # Start a progress indicator
+            print(f"\r{status_text}\t" + ind_chars[i_ind % len(ind_chars)],
+                  end="", flush=True)
+            i_ind = (i_ind + 1) % len(ind_chars)
+            next_page_id = data['next_page_id']
+            req_params = "?_page_id=" + next_page_id
+            rdata = requests.get(base_url + "allrecords" + req_params,
+                                verify=SECURITY_SSL_VERIFY,
+                                cookies=session.cookies,
+                                timeout=(30,60))
+            data = json.loads(rdata.text)
+            results = results + data['result']
+            # Append records from this page
+            for record in range(len(results)):
+                zones[zone]['records'].append(
+                    {
+                        'type':results[record]['type'],
+                        'name':results[record]['name'],
+                        'address':results[record]['address']
+                    }
+                )
+        # We've retrieved all A records
+        print(f"\r{status_text}\tOK")
     else:
-        print(f"FAIL (Reason: {results['text']})")
+        print(f"\r{status_text}\tFAIL (Reason: {data['text']})")
+
     #Now request CNAME
-    print(f"\r{' ' * (len(position) + spacing)}- Requesting CNAME records ...",
-          end="\t", flush=True)
+    status_text = (
+        f"{' ' * (len(position) + spacing)}- Requesting CNAME records ..."
+    )
+    print(f"\r{status_text}\t", end="", flush=True)
     #CNAME needs record, then use results[record]['record']['canonical']
     req_params = (
         f"?zone={zone}&view={zones[zone]['view']}"
-        f"&_max_results={TRUNC_RESULT}{MAX_RESULTS}"
+        f"&_paging=1&_return_as_object=1&_max_results={MAX_RESULTS}"
         "&type=record:cname&_return_fields=type,name,record"
     )
-    data = requests.get(
+    rdata = requests.get(
         base_url + "allrecords" + req_params,
         verify=SECURITY_SSL_VERIFY,
         cookies=session.cookies,
         timeout=(30,60)
     )
-    results = json.loads(data.text)
-    if "Error" not in results:
-        print("OK")
+    data = json.loads(rdata.text)
+    if "Error" not in data:
+        results = data['result']
+        # Append records from first page
         for record in range(len(results)):
             zones[zone]['records'].append(
                 {
@@ -227,8 +258,35 @@ for i, zone in enumerate(zones, start=1):
                     'canonical':results[record]['record']['canonical']
                 }
             )
+        # If there was more records to get, then we'll have a next_page_id
+        i_ind = 0 # Reset progress indicator index
+        while "next_page_id" in data:
+            # Start a progress indicator
+            print(f"\r{status_text}\t" + ind_chars[i_ind % len(ind_chars)],
+                  end="", flush=True)
+            i_ind = (i_ind + 1) % len(ind_chars)
+            next_page_id = data['next_page_id']
+            req_params = "?_page_id=" + next_page_id
+            rdata = requests.get(base_url + "allrecords" + req_params,
+                                verify=SECURITY_SSL_VERIFY,
+                                cookies=session.cookies,
+                                timeout=(30,60))
+            data = json.loads(rdata.text)
+            results = results + data['result']
+            # Append CNAME records from this page
+            for record in range(len(results)):
+                zones[zone]['records'].append(
+                    {
+                        'type':results[record]['type'],
+                        'name':results[record]['name'],
+                        'canonical':results[record]['record']['canonical']
+                    }
+                )
+        # We've retrieved all CNAME records
+        print(f"\r{status_text}\tOK")
     else:
-        print(f"FAIL (Reason: {results['text']})")
+        print(f"\r{status_text}\tFAIL (Reason: {data['text']})")
+
 # Logout of Grid
 print(f"Logging out of {GM_HOST} ... ", end="", flush=True)
 response_logout = requests.post(
