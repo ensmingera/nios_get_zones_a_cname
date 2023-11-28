@@ -6,7 +6,7 @@ This program connects to an Infoblox NIOS Grid and retrieves all zones, from all
 
 ## Usage
 ```
-nios_get_zones_a_cname.py [-h] [-k] [-w VERSION] [-m MAX-RESULTS] [-u USER] [-o FILE] HOST
+nios_get_zones_a_cname.py [-h] [-k] [-t] [-w VERSION] [-m MAX-RESULTS] [-u USER] [-o FILE] HOST
 ```
 **Arguments**:
 - Positional arguments
@@ -17,7 +17,9 @@ nios_get_zones_a_cname.py [-h] [-k] [-w VERSION] [-m MAX-RESULTS] [-u USER] [-o 
   - **-h, --help**
     -  Display the help messsage
   - **-k** 
-    - Disable SSL verification 
+    - Disable SSL verification
+  - **-t** 
+    - Truncate if results is greater than MAX-RESULTS (Default: False)
   - **-w VERSION**
     - WAPI version to use *(Default: 2.12.2)* 
   - **-m MAX-RESULTS**
