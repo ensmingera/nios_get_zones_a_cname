@@ -135,7 +135,7 @@ while "next_page_id" in data:
     results = results + data['result']
 
 # We've received all data now, as there is no next_page_id
-print(f"\r{status_text}\tOK")
+print(f"\r{status_text}\tOK", flush=True)
 
 uzones = {}
 for entry in results:
@@ -214,7 +214,7 @@ for i, zone in enumerate(zones, start=1):
                                 cookies=session.cookies,
                                 timeout=(30,60))
             data = json.loads(rdata.text)
-            results = results + data['result']
+            results = data['result']
             # Append records from this page
             for record in range(len(results)):
                 zones[zone]['records'].append(
@@ -225,9 +225,9 @@ for i, zone in enumerate(zones, start=1):
                     }
                 )
         # We've retrieved all A records
-        print(f"\r{status_text}\tOK")
+        print(f"\r{status_text}\tOK", flush=True)
     else:
-        print(f"\r{status_text}\tFAIL (Reason: {data['text']})")
+        print(f"\r{status_text}\tFAIL (Reason: {data['text']})", flush=True)
 
     #Now request CNAME
     status_text = (
@@ -272,7 +272,7 @@ for i, zone in enumerate(zones, start=1):
                                 cookies=session.cookies,
                                 timeout=(30,60))
             data = json.loads(rdata.text)
-            results = results + data['result']
+            results = data['result']
             # Append CNAME records from this page
             for record in range(len(results)):
                 zones[zone]['records'].append(
@@ -283,9 +283,9 @@ for i, zone in enumerate(zones, start=1):
                     }
                 )
         # We've retrieved all CNAME records
-        print(f"\r{status_text}\tOK")
+        print(f"\r{status_text}\tOK", flush=True)
     else:
-        print(f"\r{status_text}\tFAIL (Reason: {data['text']})")
+        print(f"\r{status_text}\tFAIL (Reason: {data['text']})", flush=True)
 
 # Logout of Grid
 print(f"Logging out of {GM_HOST} ... ", end="", flush=True)
